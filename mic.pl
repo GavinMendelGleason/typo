@@ -4,6 +4,9 @@
                isa_integer/1,
                isa_string/1]).
 
+:- use_module(library(list_util), [xfy_list/3]).
+:- use_module(library(pprint)).
+
 /* <module> Metainterpertation critic 
  * 
  * mic gives us some information as to causes of failure for a restricted subset of 
@@ -99,15 +102,19 @@ metainterpret(M, (TP1,TP2), ME) :-
     ;   ME1 = none
     ->  ME2 = just(E2),
         ME = just(error_branch(TP2, M, [E2])),
-        format(atom(M), 'Right conjuct fails: ~q', TP2)
+        pprint(TP2,TP2A),
+        format(atom(M), 'Right conjuct fails: ~w', TP2A)
     ;   ME2 = none
     ->  ME1 = just(E1),
         ME = just(error_branch(TP1, M, [E1])),
-        format(atom(M), 'Left conjuct fails: ~q', TP1)
+        pprint(TP1,TP1A),
+        format(atom(M), 'Left conjuct fails: ~w', TP1A)
     ;   ME1 = just(E1),
         ME2 = just(E2),
         ME = just(error_branch((TP1,TP2), M, [E1,E2])),
-        format(atom(M), 'Both conjuncts fail: ~q and ~q', [TP1,TP2])
+        pprint(TP1,TP1A),
+        pprint(TP2,TP2A),
+        format(atom(M), 'Both conjuncts fail: ~w and ~w', [TP1A,TP2A])
     ).
 metainterpret(M, (TP1;TP2), ME) :-
     metainterpret(M, TP1,ME1),
@@ -154,20 +161,24 @@ metainterpret(M, P, ME) :-
                      )
                     ),
           MEs),
+    
     include([none-_]>>(true), MEs, Successes),
     maplist([_-Body,Body]>>(true), Successes, Bodies),        
     include([just(E)-_]>>(true), MEs, Just_Failures),
     maplist([just(E)-_,E]>>(true), Just_Failures, Failures),
+
     (   MEs = []
-    ->  ME = just(error_leaf(P,M)),
-        format(atom(M),'No predicate ~q defined', [F/N])
+    ->  ME = just(error_leaf(P,Msg)),
+        format(atom(Msg),'No predicate ~q defined', [F/N])
     ;   Successes = []
-    ->  ME = just(error_branch(P,M,Failures)),
-        format(atom(M), 'No successful clause for predicate ~q', [P])
+    ->  ME = just(error_branch(P,Msg,Failures)),
+        format(atom(Msg), 'No successful clause for predicate ~q', [P])
     ;   Successes = [_,_|_]
-    ->  ME = just(error_leaf(P:-Bodies, M)),
-        format(atom(M), 'Too many viable clauses for predicate ~q:~n ~q',
-               [P,Bodies])
+    ->  xfy_list(';',Definition,Bodies),
+        ME = just(error_leaf(P:-Definition, Msg)),
+        pprint(Definition,Def_Atom),
+        format(atom(Msg), 'Too many viable clauses for predicate ~w:~n ~w',
+               [P,Def_Atom])
     ;   ME = none
     ).
 
@@ -197,6 +208,19 @@ write_stack(Stack) :-
            (   nl,
                write(M)
            )).
+
+/* 
+ * pprint(Term:any,Atom:atom) is det.
+ * 
+ * Pretty print term to atom
+ */ 
+pprint(Term,Atom) :-
+    with_output_to(
+        atom(Atom),
+        (   current_output(Stream), 
+            print_term(Term, [indent_arguments(true),output(Stream)])
+        )
+    ).
 
 /* 
  * We can use the above metainterpreter to implement HM style type checking 

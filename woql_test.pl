@@ -260,9 +260,6 @@ wf(let(P,Args,Def,S)) :-
     var_list(Args),
     pattern(Def),
     wf(S).
-wf(from(G,S)) :-
-    identifier(G),
-    wf(S).
 wf(depth(N,S)) :-
     integer(N),
     wf(S).
