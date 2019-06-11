@@ -57,8 +57,8 @@ isa_string(X) :-
  * Metainterpret/2 does not fail, but rather keeps information about 
  * why it *would* fail under normal circumstances.
  */
-metainterpret(Term, ME) :-
-    context_module(M),
+metainterpret(MTerm, ME) :-
+    strip_module(MTerm, M, Term)
     metainterpret(M, Term, ME).
 
 /* 
