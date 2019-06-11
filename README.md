@@ -18,5 +18,7 @@ which verifies syntax of a term (well-formedness conditions etc.) or
 for creating a full fledged type checker.
 
 Author: Gavin Mendel-Gleason
+
 Copyright: Datachemist Ltd. 
+
 Licence: Apache License 2.0

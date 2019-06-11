@@ -5,7 +5,7 @@
                isa_string/1]).
 
 :- use_module(library(list_util), [xfy_list/3]).
-:- use_module(library(pprint)).
+:- use_module(library(pprint), [print_term/2]).
 
 /* <module> Metainterpertation critic 
  * 
@@ -58,7 +58,7 @@ isa_string(X) :-
  * why it *would* fail under normal circumstances.
  */
 metainterpret(MTerm, ME) :-
-    strip_module(MTerm, M, Term)
+    strip_module(MTerm, M, Term),
     metainterpret(M, Term, ME).
 
 /* 
@@ -101,20 +101,20 @@ metainterpret(M, (TP1,TP2), ME) :-
     ->  ME = none
     ;   ME1 = none
     ->  ME2 = just(E2),
-        ME = just(error_branch(TP2, M, [E2])),
+        ME = just(error_branch(TP2, Msg, [E2])),
         pprint(TP2,TP2A),
-        format(atom(M), 'Right conjuct fails: ~w', TP2A)
+        format(atom(Msg), 'Right conjuct fails: ~w', TP2A)
     ;   ME2 = none
     ->  ME1 = just(E1),
-        ME = just(error_branch(TP1, M, [E1])),
+        ME = just(error_branch(TP1, Msg, [E1])),
         pprint(TP1,TP1A),
-        format(atom(M), 'Left conjuct fails: ~w', TP1A)
+        format(atom(Msg), 'Left conjuct fails: ~w', TP1A)
     ;   ME1 = just(E1),
         ME2 = just(E2),
-        ME = just(error_branch((TP1,TP2), M, [E1,E2])),
+        ME = just(error_branch((TP1,TP2), Msg, [E1,E2])),
         pprint(TP1,TP1A),
         pprint(TP2,TP2A),
-        format(atom(M), 'Both conjuncts fail: ~w and ~w', [TP1A,TP2A])
+        format(atom(Msg), 'Both conjuncts fail: ~w and ~w', [TP1A,TP2A])
     ).
 metainterpret(M, (TP1;TP2), ME) :-
     metainterpret(M, TP1,ME1),
@@ -174,7 +174,7 @@ metainterpret(M, P, ME) :-
     ->  ME = just(error_branch(P,Msg,Failures)),
         format(atom(Msg), 'No successful clause for predicate ~q', [P])
     ;   Successes = [_,_|_]
-    ->  xfy_list(';',Definition,Bodies),
+    ->  xfy_list(';',Definition,Bodies),        
         ME = just(error_leaf(P:-Definition, Msg)),
         pprint(Definition,Def_Atom),
         format(atom(Msg), 'Too many viable clauses for predicate ~w:~n ~w',
