@@ -1,4 +1,4 @@
-# typo
+# Typo
 
 Typo is a type and syntax checker reporting tool using metainterpretation.
 
