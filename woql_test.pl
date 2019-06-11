@@ -22,7 +22,6 @@ ovar(v(I)) :-
  * R := R / atom | atom
  */ 
 rigid_identifier(ID / Suffix) :-
-    !,
     rigid_identifier(ID),
     isa_atom(Suffix).
 rigid_identifier(ID) :-
@@ -57,7 +56,6 @@ obj(ID:Class) :-
     identifier(ID),
     class(Class).
 obj(ID) :-
-    \+ ID = _:_,
     identifier(ID).
 
 /* 
@@ -231,6 +229,16 @@ source(file(Id,Type)) :-
     isa_atom(Id),
     isa_atom(Type).
 
+/* Prefixes 
+ * 
+ * PF := list(atom = atom)
+ */
+prefixes([]).
+prefixes([P=U|Rest]) :-
+    isa_atom(P),
+    isa_atom(U),
+    prefixes(Rest).
+
 /*
  * Well formed term
  * 
@@ -258,8 +266,8 @@ wf(from(G,S)) :-
 wf(depth(N,S)) :-
     integer(N),
     wf(S).
-wf(prefixes(PS,S)) :- 
-    exclude([P=U]>>(isa_atom(P),isa_atom(U)),PS,[]),
+wf(prefixes(PS,S)) :-
+    prefixes(PS),
     wf(S).
 wf(start(N,S)) :-
     integer(N),

@@ -1,4 +1,5 @@
 :- module(mic,[metainterpret/2,
+               metainterpret/3,
                isa_atom/1,
                isa_integer/1,
                isa_string/1]).
@@ -53,57 +54,45 @@ isa_string(X) :-
  * Metainterpret/2 does not fail, but rather keeps information about 
  * why it *would* fail under normal circumstances.
  */
+metainterpret(Term, ME) :-
+    context_module(M),
+    metainterpret(M, Term, ME).
 
-% This is intended for HM style type checking... needs testing
-% 
-% metainterpret(isa(X,T), ME) :-
-%     % if the type variable is still a variable, we
-%     % need to suspend the interpretation.
-%     var(T),
-%     !,
-%     when(ground(T),
-%          metainterpret(isa(X,T),ME)).
-metainterpret(true, none).
-metainterpret(\+ T, ME) :-
-    (   \+ metainterpret(T,_)
+/* 
+ * metainterpret(Module,Term,MaybeError:maybe(domain_error)) is det.
+ * 
+ * Metainterpret/3 does the heavy lifting. We need to know what module 
+ * context in which we'd like the term to be evaluated in order that 
+ * we can ensure access to the various clauses etc.
+ */
+metainterpret(_, true, none).
+metainterpret(M, \+ T, ME) :-
+    (   \+ metainterpret(M, T,_)
     ->  ME = none
     ;   ME = just(error_leaf(\+ T,M)),
         format(atom(M), 'The negation ~q was not successful.', [\+ T])
     ).
-metainterpret(isa_integer(X), ME) :-
+metainterpret(_, isa_integer(X), ME) :-
     (   integer(X)
     ->  ME = none
     ;   ME = just(error_leaf(X, M)), 
         format(atom(M), '~q is not an integer', [X])
     ).
-metainterpret(isa_atom(X), ME) :-
+metainterpret(_, isa_atom(X), ME) :-
     (   atom(X)
     ->  ME = none
     ;   ME = just(error_leaf(X, M)), 
         format(atom(M), '~q is not an atom', [X])
     ).
-metainterpret(isa_string(X), ME) :-
+metainterpret(_, isa_string(X), ME) :-
     (   string(X)
     ->  ME = none
     ;   ME = just(error_leaf(X, M)), 
         format(atom(M), '~q is not a string', [X])
     ).
-metainterpret(exclude(P,L,O), ME) :-
-    % We really need to lift to higher order predicate metainterperter
-    % calls here which requires some care.
-    (   call(exclude(P,L,O))
-    ->  ME = none
-    ;   ME = just(error_leaf(exclude(P,L,O), M)), 
-        format(atom(M), 'Exclusion with predicate ~q does not result in ~q on ~q', [P,O,L])
-    ).
-metainterpret(isa(X,T), ME) :-
-    T =.. [F|Args],
-    atom_concat('isa_',F,G),
-    Goal =.. [G,X|Args],
-    metainterpret(Goal, ME).
-metainterpret((TP1,TP2), ME) :-
-    metainterpret(TP1, ME1),
-    metainterpret(TP2, ME2),
+metainterpret(M, (TP1,TP2), ME) :-
+    metainterpret(M,TP1,ME1),
+    metainterpret(M,TP2,ME2),
     (   ME1 = none,
         ME2 = none
     ->  ME = none
@@ -120,9 +109,9 @@ metainterpret((TP1,TP2), ME) :-
         ME = just(error_branch((TP1,TP2), M, [E1,E2])),
         format(atom(M), 'Both conjuncts fail: ~q and ~q', [TP1,TP2])
     ).
-metainterpret((TP1;TP2), ME) :-
-    metainterpret(TP1,ME1),
-    metainterpret(TP2,ME2),
+metainterpret(M, (TP1;TP2), ME) :-
+    metainterpret(M, TP1,ME1),
+    metainterpret(M, TP2,ME2),
     (   ME1=just(E1),
         ME2=just(E2)
     ->  ME = just(error_branch((TP1;TP2), M, [E1,E2])),
@@ -135,30 +124,33 @@ metainterpret((TP1;TP2), ME) :-
                [(TP1;TP2)])
     ;   ME=none
     ).
-metainterpret((TP1=TP2), ME) :-
+metainterpret(_, (TP1=TP2), ME) :-
     (   TP1=TP2
     ->  ME=none
     ;   ME = just(error_leaf((TP1=TP2),Msg)),
         format(atom(Msg), 'Non unifiable term elements ~q and ~q', [TP1,TP2])
     ).
-metainterpret(P, ME) :-
-    functor(P,F,_),
-    \+ member(F,[isa,isa_integer,',',';', '=', true,':']),
-    !,
-    context_module(M),
-    metainterpret(M:P, ME).
-metainterpret(M:P, ME) :-
+metainterpret(M, P, ME) :-
     functor(P,F,N),
-    \+ member(F,[isa,isa_integer,',',';', '=', true]),
+    \+ member(F,[isa,isa_integer,isa_atom,isa_string,',',';', '=', true]),
     !,
     length(Vars,N),
     P =.. [F|Args],
     Q =.. [F|Vars],
-    bagof(ME_i-Body,(clause(Q, Body),
+
+    (   predicate_property(M:P, visible)
+    ->  Module = M
+    ;   predicate_property(M:P, imported_from(Local_M))
+    ->  Module = Local_M
+    ;   context_module(Ctx_M),
+        Module = Ctx_M
+    ),
+    
+    bagof(ME_i-Body,(clause(Module:Q, Body),
                      (   Vars = Args
-                     ->  metainterpret(Body,ME_i)
+                     ->  metainterpret(M,Body,ME_i)
                      ;   ME_i = just(error_leaf((Vars=Args),M)),
-                    format(atom(M), 'Head ~q does not match arguments ~q', [Q,Args])
+                         format(atom(M), 'Head ~q does not match arguments ~q', [Q,Args])
                      )
                     ),
           MEs),
