@@ -17,7 +17,7 @@ This library is useful for creating either an ad-hoc type-checker
 which verifies syntax of a term (well-formedness conditions etc.) or
 for creating a full fledged type checker.
 
-## invocation 
+## Invocation 
 
 In order to invoke the metainterpretation critic, simply write down
 some syntax checking predicates and you can use `metainterpret/3` to
@@ -66,9 +66,7 @@ Right conjuct fails: isa_int_list([ 2, x ])
 No successful clause for predicate isa_int_list([1,2,x])
 
 ...
-
 ```
-
 
 Author: Gavin Mendel-Gleason
 

@@ -103,18 +103,35 @@ metainterpret(M, (TP1,TP2), ME) :-
     ->  ME2 = just(E2),
         ME = just(error_branch(TP2, Msg, [E2])),
         pprint(TP2,TP2A),
-        format(atom(Msg), 'Right conjuct fails: ~w', TP2A)
+        format(atom(Msg), 'Right conjuct fails: ~w', [TP2A])
     ;   ME2 = none
     ->  ME1 = just(E1),
         ME = just(error_branch(TP1, Msg, [E1])),
         pprint(TP1,TP1A),
-        format(atom(Msg), 'Left conjuct fails: ~w', TP1A)
+        format(atom(Msg), 'Left conjuct fails: ~w', [TP1A])
     ;   ME1 = just(E1),
         ME2 = just(E2),
         ME = just(error_branch((TP1,TP2), Msg, [E1,E2])),
         pprint(TP1,TP1A),
         pprint(TP2,TP2A),
         format(atom(Msg), 'Both conjuncts fail: ~w and ~w', [TP1A,TP2A])
+    ).
+metainterpret(M, (TP1->TP2), ME) :-
+    !,
+    metainterpret(M, TP1, ME1),
+    (   ME1 = none
+    ->  metainterpret(M, TP2, ME2),
+        (   ME2 = none
+        ->  ME = none
+        ;   ME2 = just(E2),
+            ME = just(error_branch((TP1->TP2), Msg, [E2])),
+            pprint(TP2,TP2A),
+            format(atom(Msg), 'Consequent fails: ~w', [TP2A])
+        )
+    ;   ME1 = just(E1),
+        ME = just(error_branch((TP1->TP2), Msg, [E1])),
+        pprint(TP1,TP1A),
+        format(atom(Msg), 'Antecedent fails: ~w', [TP1A])
     ).
 metainterpret(M, (TP1;TP2), ME) :-
     metainterpret(M, TP1,ME1),
